@@ -1,15 +1,15 @@
-<?php
+    <?php
 
-declare(strict_types=1);
+    declare(strict_types=1);
 
-namespace App;
+    namespace App;
 
-final class Sender
-{
-    protected array $settings;
-
-    public function setCredentials(array $settings)
+    final class Sender
     {
-        $this->settings = $settings;
+        protected array $settings;
+
+        public function setCredentials(array $settings)
+        {
+            $this->settings = $settings;
+        }
     }
-}
