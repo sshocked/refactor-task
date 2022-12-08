@@ -1,48 +1,46 @@
-    <?php
+<?php
 
-    declare(strict_types=1);
+declare(strict_types=1);
 
-    namespace App;
+namespace App;
 
-    use InvalidArgumentException;
+use app\dto\UserDto;
+
+/**
+ * Class CrmManager
+ * @package App
+ */
+class CrmManager
+{
+    /**
+     * @param ProviderCollection $providers
+     * @param \UserValidator $validator
+     * @throws \Exception
+     */
+    public function __construct(private readonly ProviderCollection $providers, private \UserValidator $validator)
+    {
+    }
 
     /**
-     * Class CrmManager
-     * @package App
+     * Sends the person to a crm
+     *
+     * @param array $data
+     * @throws \Exception
      */
-    class CrmManager
+    public function sendPerson(array $data): void
     {
-        private BazSender $client;
-
-        /**
-         * @var array
-         */
-        private $settings;
-
-        public function __construct(array $settings)
-        {
-            if (empty($settings['user'])) {
-                throw new InvalidArgumentException('User must be set!');
-            }
-
-            if (empty($settings['passwd'])) {
-                throw new InvalidArgumentException('Password must be set!');
-            }
-
-            $this->settings = $settings;
-            $this->client = new BazSender();
+        if(!$this->validator->setData($data)->validate()) {
+            $errorMsg = sprintf("Validation error: %s", json_encode($this->validator->getErrorMessages(), JSON_UNESCAPED_UNICODE));
+            throw new \Exception($errorMsg);
         }
 
-        /**
-         * Sends the person to a crm
-         *
-         * @param array $clientEntity
-         * @return int
-         */
-        public function sendPerson(array $clientEntity): int
-        {
-            $this->client->setCredentials($this->settings);
-
-            return $this->client->send($clientEntity);
+        try {
+            $dto = (new UserDto())->fromArray($data);
+            foreach ($this->providers->getProviders() as $provider) {
+                $provider->send($dto);
+            }
+        } catch (\Exception $e) {
+            throw new \Exception(sprintf('Error on executing send happened: %s', $e->getMessage()));
         }
     }
+}
