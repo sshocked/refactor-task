@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App;
 
-use InvalidArgumentException;
+use app\dto\UserDto;
 
 /**
  * Class CrmManager
@@ -12,37 +12,35 @@ use InvalidArgumentException;
  */
 class CrmManager
 {
-    private BazSender $client;
-
     /**
-     * @var array
+     * @param ProviderCollection $providers
+     * @param \UserValidator $validator
+     * @throws \Exception
      */
-    private $settings;
-
-    public function __construct(array $settings)
+    public function __construct(private readonly ProviderCollection $providers, private \UserValidator $validator)
     {
-        if (empty($settings['user'])) {
-            throw new InvalidArgumentException('User must be set!');
-        }
-
-        if (empty($settings['passwd'])) {
-            throw new InvalidArgumentException('Password must be set!');
-        }
-
-        $this->settings = $settings;
-        $this->client = new BazSender();
     }
 
     /**
      * Sends the person to a crm
      *
-     * @param array $clientEntity
-     * @return int
+     * @param array $data
+     * @throws \Exception
      */
-    public function sendPerson(array $clientEntity): int
+    public function sendPerson(array $data): void
     {
-        $this->client->setCredentials($this->settings);
+        if(!$this->validator->setData($data)->validate()) {
+            $errorMsg = sprintf("Validation error: %s", json_encode($this->validator->getErrorMessages(), JSON_UNESCAPED_UNICODE));
+            throw new \Exception($errorMsg);
+        }
 
-        return $this->client->send($clientEntity);
+        try {
+            $dto = (new UserDto())->fromArray($data);
+            foreach ($this->providers->getProviders() as $provider) {
+                $provider->send($dto);
+            }
+        } catch (\Exception $e) {
+            throw new \Exception(sprintf('Error on executing send happened: %s', $e->getMessage()));
+        }
     }
 }
