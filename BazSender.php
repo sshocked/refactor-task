@@ -19,3 +19,4 @@ class BazSender extends Sender
         return 200;
     }
 }
+
